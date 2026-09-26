@@ -1,0 +1,26 @@
+auth {
+  mode: bearer
+}
+
+auth:bearer {
+  token: {{apiKey}}
+}
+
+script:pre-request {
+  const apiKey = bru.interpolate("{{apiKey}}");
+  const target = bru.interpolate(req.getUrl());
+  if (!bru.getEnvName() || !/^sk_test_[A-Za-z0-9_-]{43}$/.test(apiKey)) {
+    throw new Error("Select Sandbox and set a valid sk_test_ API key.");
+  }
+  if (!/^https:\/\/www\.sanctionskit\.com\/api\/v1\//.test(target)) {
+    throw new Error("Use https://www.sanctionskit.com/api/v1 as baseUrl.");
+  }
+  req.setMaxRedirects(0);
+  req.setTimeout(30000);
+}
+
+docs {
+  Sanctions screening, evidence and batch examples using invented sandbox fixtures.
+
+  [Create a sandbox API key](https://www.sanctionskit.com/dashboard/keys?environment=sandbox) · [Quickstart](https://www.sanctionskit.com/docs/quickstart) · [API reference](https://www.sanctionskit.com/docs/api-reference)
+}

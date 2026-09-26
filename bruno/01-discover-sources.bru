@@ -1,0 +1,33 @@
+meta {
+  name: 01 Discover sources
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/sources
+  body: none
+  auth: inherit
+}
+
+headers {
+  Accept: application/json
+}
+
+tests {
+  test("HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  if (res.getStatus() === 200) {
+    const body = res.getBody();
+    test("Source registry returned", function () {
+      expect(body.data).to.be.an("array");
+    });
+  }
+}
+
+docs {
+  Read source capabilities and current availability. This registry describes production coverage. The screening examples below use the separate synthetic sandbox@1 package. Scope: sources:read.
+
+  [Documentation](https://www.sanctionskit.com/docs/sources)
+}

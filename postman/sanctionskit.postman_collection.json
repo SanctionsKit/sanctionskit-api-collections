@@ -1,0 +1,759 @@
+{
+  "info": {
+    "name": "SanctionsKit API — sanctions screening examples",
+    "description": "Try sanctions screening, retained evidence, source discovery and batch processing with the SanctionsKit API. All screening requests use invented sandbox fixtures and are never billed.\n\n[Create a workspace](https://www.sanctionskit.com/signup) · [Create a sandbox API key](https://www.sanctionskit.com/dashboard/keys?environment=sandbox) · [Quickstart](https://www.sanctionskit.com/docs/quickstart) · [API reference](https://www.sanctionskit.com/docs/api-reference)\n\nImport and select the companion sandbox environment. Set apiKey to a local sk_test_ value with sources:read, screenings:write, results:read, batches:write and usage:read. Run the requests in order. Batch progress is a single read; repeat it manually until processing stops.\n\nEach POST creates an operation key only when its environment variable is empty. Keep the same key and body when retrying. Clear the corresponding key only for a new operation. Saved IDs remain in your local environment. Clear secrets and IDs before exporting or sharing.\n\nPotential matches require review. A no-match result applies only to the requested coverage; it is not legal clearance. [Errors](https://www.sanctionskit.com/docs/errors) · [Idempotency](https://www.sanctionskit.com/docs/idempotency)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{apiKey}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const apiKey = pm.variables.get(\"apiKey\") || \"\";",
+          "const target = pm.variables.replaceIn(pm.request.url.toString());",
+          "if (!pm.environment.get(\"baseUrl\") || !/^sk_test_[A-Za-z0-9_-]{43}$/.test(apiKey)) {",
+          "  console.error(\"Select the sandbox environment and set a valid sk_test_ API key.\");",
+          "  pm.execution.skipRequest();",
+          "}",
+          "if (!/^https:\\/\\/www\\.sanctionskit\\.com\\/api\\/v1\\//.test(target)) {",
+          "  console.error(\"Use https://www.sanctionskit.com/api/v1 as baseUrl.\");",
+          "  pm.execution.skipRequest();",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Discover sources",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/sources",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "sources"
+          ]
+        },
+        "description": "Read source capabilities and current availability. This registry describes production coverage. The screening examples below use the separate synthetic sandbox@1 package. Scope: sources:read.\n\n[Documentation](https://www.sanctionskit.com/docs/sources)"
+      },
+      "protocolProfileBehavior": {
+        "followRedirects": false
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () {",
+              "  pm.expect(pm.response.code).to.equal(200);",
+              "});",
+              "if (pm.response.code === 200) {",
+              "  const body = pm.response.json();",
+              "  pm.test(\"Source registry returned\", function () {",
+              "    pm.expect(body.data).to.be.an(\"array\");",
+              "  });",
+              "}"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "02 Screen a person",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{screeningKey}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/screenings",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "screenings"
+          ]
+        },
+        "description": "Alex Morgan is an invented sandbox person. Expect potential_match and inspect the returned evidence. A successful response saves resultId for the next two requests. Scope: screenings:write.\n\n[Documentation](https://www.sanctionskit.com/docs/screenings)",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"subject\": {\n    \"name\": \"Alex Morgan\",\n    \"entityType\": \"person\",\n    \"birthDate\": \"1984\"\n  },\n  \"package\": \"sandbox@1\",\n  \"retention\": \"standard\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "protocolProfileBehavior": {
+        "followRedirects": false
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "let key = pm.environment.get(\"screeningKey\");",
+              "if (!key) {",
+              "  key = pm.variables.replaceIn(\"{{$guid}}\");",
+              "  pm.environment.set(\"screeningKey\", key);",
+              "}",
+              "if (!/^[\\w:.-]{8,128}$/.test(key)) {",
+              "  pm.execution.skipRequest();",
+              "  throw new Error(\"Set screeningKey to an 8-128 character operation key.\");",
+              "}",
+              "pm.request.headers.upsert({ key: \"Idempotency-Key\", value: key });"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", function () {",
+              "  pm.expect(pm.response.code).to.equal(201);",
+              "});",
+              "if (pm.response.code === 201) {",
+              "  const body = pm.response.json();",
+              "  const result = body.data;",
+              "  pm.test(\"Synthetic screening result\", function () {",
+              "    pm.expect(result.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);",
+              "    pm.expect(result.environment).to.equal(\"sandbox\");",
+              "    pm.expect(result.matches).to.be.an(\"array\");",
+              "    pm.expect(result.coverage).to.be.an(\"array\").that.is.not.empty;",
+              "    pm.expect(result.versions.package).to.equal(\"sandbox@1\");",
+              "    pm.expect(result.status).to.equal(\"potential_match\");",
+              "    pm.expect(result.matches).to.not.be.empty;",
+              "  });",
+              "  if (result && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(result.id) && result.environment === \"sandbox\" &&",
+              "      result.status === \"potential_match\" && Array.isArray(result.matches) && result.matches.length > 0) {",
+              "    pm.environment.set(\"resultId\", result.id);",
+              "  }",
+              "}"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "03 Retrieve a result",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/results/{{resultId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "results",
+            "{{resultId}}"
+          ]
+        },
+        "description": "Run Screen a person first, or set resultId to a retained sandbox result. The response includes data.status, matches, coverage and versions. Scope: results:read.\n\n[Documentation](https://www.sanctionskit.com/docs/screenings)"
+      },
+      "protocolProfileBehavior": {
+        "followRedirects": false
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pm.environment.get(\"resultId\") || \"\")) {",
+              "  pm.execution.skipRequest();",
+              "  throw new Error(\"Run the creation request first, or set a valid resultId.\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () {",
+              "  pm.expect(pm.response.code).to.equal(200);",
+              "});",
+              "if (pm.response.code === 200) {",
+              "  const body = pm.response.json();",
+              "  const result = body.data;",
+              "  pm.test(\"Synthetic screening result\", function () {",
+              "    pm.expect(result.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);",
+              "    pm.expect(result.environment).to.equal(\"sandbox\");",
+              "    pm.expect(result.matches).to.be.an(\"array\");",
+              "    pm.expect(result.coverage).to.be.an(\"array\").that.is.not.empty;",
+              "    pm.expect(result.versions.package).to.equal(\"sandbox@1\");",
+              "    pm.expect([\"potential_match\", \"no_match\"]).to.include(result.status);",
+              "    pm.expect(result.id).to.equal(pm.environment.get(\"resultId\"));",
+              "  });",
+              "}"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "04 Download evidence",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/results/{{resultId}}/evidence",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "results",
+            "{{resultId}}",
+            "evidence"
+          ]
+        },
+        "description": "Read retained evidence for resultId. This response is a document with format and result at the top level; it has no data wrapper. Scope: results:read.\n\n[Documentation](https://www.sanctionskit.com/docs/evidence)"
+      },
+      "protocolProfileBehavior": {
+        "followRedirects": false
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pm.environment.get(\"resultId\") || \"\")) {",
+              "  pm.execution.skipRequest();",
+              "  throw new Error(\"Run the creation request first, or set a valid resultId.\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () {",
+              "  pm.expect(pm.response.code).to.equal(200);",
+              "});",
+              "if (pm.response.code === 200) {",
+              "  const body = pm.response.json();",
+              "  pm.test(\"Retained evidence document\", function () {",
+              "    pm.expect(body.format).to.equal(\"sanctionskit-evidence@1\");",
+              "    pm.expect(body.result.id).to.equal(pm.environment.get(\"resultId\"));",
+              "    pm.expect(body.result.environment).to.equal(\"sandbox\");",
+              "    pm.expect(body.retention).to.equal(\"standard\");",
+              "    pm.expect(body.retainedInputs).to.equal(true);",
+              "  });",
+              "}"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "05 Screen an organization",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{noMatchKey}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/screenings",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "screenings"
+          ]
+        },
+        "description": "Juniper Example Cooperative is an invented organization with no matching sandbox fixture. A no_match applies only to the selected coverage and matching rules. This request leaves resultId unchanged. Scope: screenings:write.\n\n[Documentation](https://www.sanctionskit.com/docs/screenings)",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"subject\": {\n    \"name\": \"Juniper Example Cooperative\",\n    \"entityType\": \"organization\"\n  },\n  \"package\": \"sandbox@1\",\n  \"retention\": \"standard\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "protocolProfileBehavior": {
+        "followRedirects": false
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "let key = pm.environment.get(\"noMatchKey\");",
+              "if (!key) {",
+              "  key = pm.variables.replaceIn(\"{{$guid}}\");",
+              "  pm.environment.set(\"noMatchKey\", key);",
+              "}",
+              "if (!/^[\\w:.-]{8,128}$/.test(key)) {",
+              "  pm.execution.skipRequest();",
+              "  throw new Error(\"Set noMatchKey to an 8-128 character operation key.\");",
+              "}",
+              "pm.request.headers.upsert({ key: \"Idempotency-Key\", value: key });"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", function () {",
+              "  pm.expect(pm.response.code).to.equal(201);",
+              "});",
+              "if (pm.response.code === 201) {",
+              "  const body = pm.response.json();",
+              "  const result = body.data;",
+              "  pm.test(\"Synthetic screening result\", function () {",
+              "    pm.expect(result.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);",
+              "    pm.expect(result.environment).to.equal(\"sandbox\");",
+              "    pm.expect(result.matches).to.be.an(\"array\");",
+              "    pm.expect(result.coverage).to.be.an(\"array\").that.is.not.empty;",
+              "    pm.expect(result.versions.package).to.equal(\"sandbox@1\");",
+              "    pm.expect(result.status).to.equal(\"no_match\");",
+              "    pm.expect(result.matches).to.have.lengthOf(0);",
+              "  });",
+              "}"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "06 Screen a vessel",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{vesselKey}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/screenings",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "screenings"
+          ]
+        },
+        "description": "Example Horizon and IMO 0000001 are invented sandbox fixtures. Expect potential_match. This request leaves resultId unchanged. Scope: screenings:write.\n\n[Documentation](https://www.sanctionskit.com/docs/screenings)",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"subject\": {\n    \"name\": \"Example Horizon\",\n    \"entityType\": \"vessel\",\n    \"identifiers\": [\n      {\n        \"type\": \"imo\",\n        \"value\": \"0000001\"\n      }\n    ]\n  },\n  \"package\": \"sandbox@1\",\n  \"retention\": \"standard\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "protocolProfileBehavior": {
+        "followRedirects": false
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "let key = pm.environment.get(\"vesselKey\");",
+              "if (!key) {",
+              "  key = pm.variables.replaceIn(\"{{$guid}}\");",
+              "  pm.environment.set(\"vesselKey\", key);",
+              "}",
+              "if (!/^[\\w:.-]{8,128}$/.test(key)) {",
+              "  pm.execution.skipRequest();",
+              "  throw new Error(\"Set vesselKey to an 8-128 character operation key.\");",
+              "}",
+              "pm.request.headers.upsert({ key: \"Idempotency-Key\", value: key });"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", function () {",
+              "  pm.expect(pm.response.code).to.equal(201);",
+              "});",
+              "if (pm.response.code === 201) {",
+              "  const body = pm.response.json();",
+              "  const result = body.data;",
+              "  pm.test(\"Synthetic screening result\", function () {",
+              "    pm.expect(result.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);",
+              "    pm.expect(result.environment).to.equal(\"sandbox\");",
+              "    pm.expect(result.matches).to.be.an(\"array\");",
+              "    pm.expect(result.coverage).to.be.an(\"array\").that.is.not.empty;",
+              "    pm.expect(result.versions.package).to.equal(\"sandbox@1\");",
+              "    pm.expect(result.status).to.equal(\"potential_match\");",
+              "    pm.expect(result.matches).to.not.be.empty;",
+              "  });",
+              "}"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "07 Submit a batch",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{batchKey}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/batches",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "batches"
+          ]
+        },
+        "description": "Submit three complete synthetic screening requests. HTTP 202 confirms acceptance, not completed screening. A successful response saves batchId. Each row uses standard retention. Scope: batches:write.\n\n[Documentation](https://www.sanctionskit.com/docs/batches)",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Synthetic onboarding sample\",\n  \"subjects\": [\n    {\n      \"subject\": {\n        \"name\": \"Alex Morgan\",\n        \"entityType\": \"person\",\n        \"birthDate\": \"1984\"\n      },\n      \"package\": \"sandbox@1\",\n      \"retention\": \"standard\"\n    },\n    {\n      \"subject\": {\n        \"name\": \"Juniper Example Cooperative\",\n        \"entityType\": \"organization\"\n      },\n      \"package\": \"sandbox@1\",\n      \"retention\": \"standard\"\n    },\n    {\n      \"subject\": {\n        \"name\": \"Example Horizon\",\n        \"entityType\": \"vessel\",\n        \"identifiers\": [\n          {\n            \"type\": \"imo\",\n            \"value\": \"0000001\"\n          }\n        ]\n      },\n      \"package\": \"sandbox@1\",\n      \"retention\": \"standard\"\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "protocolProfileBehavior": {
+        "followRedirects": false
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "let key = pm.environment.get(\"batchKey\");",
+              "if (!key) {",
+              "  key = pm.variables.replaceIn(\"{{$guid}}\");",
+              "  pm.environment.set(\"batchKey\", key);",
+              "}",
+              "if (!/^[\\w:.-]{8,128}$/.test(key)) {",
+              "  pm.execution.skipRequest();",
+              "  throw new Error(\"Set batchKey to an 8-128 character operation key.\");",
+              "}",
+              "pm.request.headers.upsert({ key: \"Idempotency-Key\", value: key });"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 202\", function () {",
+              "  pm.expect(pm.response.code).to.equal(202);",
+              "});",
+              "if (pm.response.code === 202) {",
+              "  const body = pm.response.json();",
+              "  pm.test(\"Batch accepted\", function () {",
+              "    pm.expect(body.data.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);",
+              "    pm.expect(body.data.status).to.equal(\"pending\");",
+              "    pm.expect(body.data.total).to.equal(3);",
+              "  });",
+              "  if (body.data && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.data.id) && body.data.status === \"pending\" && body.data.total === 3) {",
+              "    pm.environment.set(\"batchId\", body.data.id);",
+              "    pm.environment.set(\"batchResultId\", \"\");",
+              "    pm.environment.set(\"batchOffset\", \"0\");",
+              "  }",
+              "}"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "08 Read batch progress",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/batches/{{batchId}}?limit=100&offset={{batchOffset}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "batches",
+            "{{batchId}}"
+          ],
+          "query": [
+            {
+              "key": "limit",
+              "value": "100"
+            },
+            {
+              "key": "offset",
+              "value": "{{batchOffset}}"
+            }
+          ]
+        },
+        "description": "Run Submit a batch first. Send again after about five seconds while status is pending, importing or processing. Stop at completed, failed or cancelled and inspect every row. completed can include failed rows. After processing stops, set batchOffset to nextOffset until null. The first completed row.screening_id is saved as batchResultId for Read a batch result. To download its evidence, copy that ID into resultId. Scope: results:read.\n\n[Documentation](https://www.sanctionskit.com/docs/batches)"
+      },
+      "protocolProfileBehavior": {
+        "followRedirects": false
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pm.environment.get(\"batchId\") || \"\")) {",
+              "  pm.execution.skipRequest();",
+              "  throw new Error(\"Run the creation request first, or set a valid batchId.\");",
+              "}",
+              "const offset = String(pm.environment.get(\"batchOffset\"));",
+              "if (!/^(0|[1-9]\\d*)$/.test(offset) || Number(offset) > 10000) {",
+              "  pm.execution.skipRequest();",
+              "  throw new Error(\"Set batchOffset to an integer from 0 to 10000.\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () {",
+              "  pm.expect(pm.response.code).to.equal(200);",
+              "});",
+              "if (pm.response.code === 200) {",
+              "  const body = pm.response.json();",
+              "  pm.test(\"Batch progress and row page\", function () {",
+              "    pm.expect(body.data.id).to.equal(pm.environment.get(\"batchId\"));",
+              "    pm.expect(body.data.environment).to.equal(\"sandbox\");",
+              "    pm.expect([\"importing\", \"pending\", \"processing\", \"completed\", \"cancelled\", \"failed\"]).to.include(body.data.status);",
+              "    pm.expect(body.data.rows).to.be.an(\"array\");",
+              "    pm.expect(body.data.nextOffset === null || Number.isInteger(body.data.nextOffset)).to.equal(true);",
+              "  });",
+              "  if (body.data && body.data.id === pm.environment.get(\"batchId\") &&",
+              "      body.data.environment === \"sandbox\" && Array.isArray(body.data.rows)) {",
+              "    const row = body.data.rows.find((row) => row.status === \"completed\" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(row.screening_id));",
+              "    if (row) pm.environment.set(\"batchResultId\", row.screening_id);",
+              "  }",
+              "}"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "09 Read a batch result",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/results/{{batchResultId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "results",
+            "{{batchResultId}}"
+          ]
+        },
+        "description": "Read a completed batch row. Read batch progress saves the first completed row’s screening_id as batchResultId. To inspect another row, set batchResultId to its screening_id. Scope: results:read.\n\n[Documentation](https://www.sanctionskit.com/docs/batches)"
+      },
+      "protocolProfileBehavior": {
+        "followRedirects": false
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pm.environment.get(\"batchResultId\") || \"\")) {",
+              "  pm.execution.skipRequest();",
+              "  throw new Error(\"Run the creation request first, or set a valid batchResultId.\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () {",
+              "  pm.expect(pm.response.code).to.equal(200);",
+              "});",
+              "if (pm.response.code === 200) {",
+              "  const body = pm.response.json();",
+              "  const result = body.data;",
+              "  pm.test(\"Synthetic screening result\", function () {",
+              "    pm.expect(result.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);",
+              "    pm.expect(result.environment).to.equal(\"sandbox\");",
+              "    pm.expect(result.matches).to.be.an(\"array\");",
+              "    pm.expect(result.coverage).to.be.an(\"array\").that.is.not.empty;",
+              "    pm.expect(result.versions.package).to.equal(\"sandbox@1\");",
+              "    pm.expect([\"potential_match\", \"no_match\"]).to.include(result.status);",
+              "    pm.expect(result.id).to.equal(pm.environment.get(\"batchResultId\"));",
+              "  });",
+              "}"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "10 Read usage",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/usage",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "usage"
+          ]
+        },
+        "description": "Inspect used subjects, pending reservations and remaining sandbox allowance. Values depend on your workspace. Synthetic sandbox requests never consume paid production allowance. Scope: usage:read.\n\n[Documentation](https://www.sanctionskit.com/docs/usage)"
+      },
+      "protocolProfileBehavior": {
+        "followRedirects": false
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () {",
+              "  pm.expect(pm.response.code).to.equal(200);",
+              "});",
+              "if (pm.response.code === 200) {",
+              "  const body = pm.response.json();",
+              "  pm.test(\"Sandbox allowance\", function () {",
+              "    pm.expect(body.data.environment).to.equal(\"sandbox\");",
+              "    pm.expect(body.data.used).to.be.a(\"number\").and.at.least(0);",
+              "    pm.expect(body.data.reserved).to.be.a(\"number\").and.at.least(0);",
+              "    pm.expect(body.data.remaining).to.be.a(\"number\").and.at.least(0);",
+              "  });",
+              "}"
+            ]
+          }
+        }
+      ],
+      "response": []
+    }
+  ]
+}

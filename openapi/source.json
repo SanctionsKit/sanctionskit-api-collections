@@ -1,0 +1,15 @@
+{
+  "sourceUrl": "https://www.sanctionskit.com/openapi.json",
+  "retrievedAt": "2026-09-26T19:55:20.869Z",
+  "sourceSha256": "ce8199c818e45c50e6424c47c4847759e1dcb0bf0ff013d10421c2239ee7ccd2",
+  "sourceDocumentSha256": "ce8199c818e45c50e6424c47c4847759e1dcb0bf0ff013d10421c2239ee7ccd2",
+  "distributionSha256": "510f2cc65459ec63170ee65dab4b86ce0a2d0ae995a2a6099301b78a1adf2fa4",
+  "docsRevision": "e8fd69c5dc940a517009f8d855a2753042438e5e05fd77f974b89842eb39ea83",
+  "originalServers": [
+    {
+      "url": "/api/v1",
+      "description": "This site origin; deployment configuration and access rules apply"
+    }
+  ],
+  "transformation": "Replace root server URLs with the absolute production API URL."
+}

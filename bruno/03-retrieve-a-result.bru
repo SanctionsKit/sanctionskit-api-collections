@@ -1,0 +1,46 @@
+meta {
+  name: 03 Retrieve a result
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/results/{{resultId}}
+  body: none
+  auth: inherit
+}
+
+headers {
+  Accept: application/json
+}
+
+script:pre-request {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bru.getEnvVar("resultId") || "")) {
+    throw new Error("Run the creation request first, or set a valid resultId.");
+  }
+}
+
+tests {
+  test("HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  if (res.getStatus() === 200) {
+    const body = res.getBody();
+    const result = body.data;
+    test("Synthetic screening result", function () {
+      expect(result.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+      expect(result.environment).to.equal("sandbox");
+      expect(result.matches).to.be.an("array");
+      expect(result.coverage).to.be.an("array").that.is.not.empty;
+      expect(result.versions.package).to.equal("sandbox@1");
+      expect(["potential_match", "no_match"]).to.include(result.status);
+      expect(result.id).to.equal(bru.getEnvVar("resultId"));
+    });
+  }
+}
+
+docs {
+  Run Screen a person first, or set resultId to a retained sandbox result. The response includes data.status, matches, coverage and versions. Scope: results:read.
+
+  [Documentation](https://www.sanctionskit.com/docs/screenings)
+}

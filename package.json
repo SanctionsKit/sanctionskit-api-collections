@@ -1,0 +1,37 @@
+{
+  "name": "@sanctionskit/api-collections",
+  "version": "1.0.0",
+  "description": "Postman and Bruno collections and OpenAPI specification for the SanctionsKit sanctions screening API, with synthetic sandbox and batch screening examples.",
+  "license": "MIT",
+  "author": "SanctionsKit <support@sanctionskit.com>",
+  "homepage": "https://www.sanctionskit.com/docs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SanctionsKit/sanctionskit-api-collections.git"
+  },
+  "bugs": "https://github.com/SanctionsKit/sanctionskit-api-collections/issues",
+  "keywords": [
+    "sanctions-screening", "sanctions-api", "watchlist-screening", "aml", "kyc",
+    "compliance", "postman", "postman-collection", "bruno", "openapi", "batch-screening", "api-examples"
+  ],
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "files": [
+    "README.md", "LICENSE", "SECURITY.md", "CONTRIBUTING.md",
+    "openapi/README.md", "openapi/sanctionskit.openapi.json", "openapi/source.json",
+    "postman/README.md", "postman/sanctionskit.postman_collection.json",
+    "postman/sanctionskit.sandbox.postman_environment.json",
+    "bruno/README.md", "bruno/bruno.json", "bruno/collection.bru",
+    "bruno/environments/Sandbox.bru", "bruno/*.bru"
+  ],
+  "scripts": {
+    "test": "node scripts/check-openapi.mjs && node scripts/check-collections.mjs",
+    "sync:openapi": "node scripts/sync-openapi.mjs"
+  },
+  "devDependencies": {
+    "@usebruno/lang": "0.40.0",
+    "ajv": "8.20.0",
+    "ajv-draft-04": "1.0.0",
+    "ajv-formats": "3.0.1"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "SanctionsKit API — sanctions screening examples",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

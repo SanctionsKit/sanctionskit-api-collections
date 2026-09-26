@@ -1,0 +1,65 @@
+meta {
+  name: 05 Screen an organization
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/screenings
+  body: json
+  auth: inherit
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+  Idempotency-Key: {{noMatchKey}}
+}
+
+body:json {
+  {
+    "subject": {
+      "name": "Juniper Example Cooperative",
+      "entityType": "organization"
+    },
+    "package": "sandbox@1",
+    "retention": "standard"
+  }
+}
+
+script:pre-request {
+  let key = bru.getEnvVar("noMatchKey");
+  if (!key) {
+    key = bru.interpolate("{{$randomUUID}}");
+    bru.setEnvVar("noMatchKey", key);
+  }
+  if (!/^[\w:.-]{8,128}$/.test(key)) {
+    throw new Error("Set noMatchKey to an 8-128 character operation key.");
+  }
+  req.setHeader("Idempotency-Key", key);
+}
+
+tests {
+  test("HTTP 201", function () {
+    expect(res.getStatus()).to.equal(201);
+  });
+  if (res.getStatus() === 201) {
+    const body = res.getBody();
+    const result = body.data;
+    test("Synthetic screening result", function () {
+      expect(result.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+      expect(result.environment).to.equal("sandbox");
+      expect(result.matches).to.be.an("array");
+      expect(result.coverage).to.be.an("array").that.is.not.empty;
+      expect(result.versions.package).to.equal("sandbox@1");
+      expect(result.status).to.equal("no_match");
+      expect(result.matches).to.have.lengthOf(0);
+    });
+  }
+}
+
+docs {
+  Juniper Example Cooperative is an invented organization with no matching sandbox fixture. A no_match applies only to the selected coverage and matching rules. This request leaves resultId unchanged. Scope: screenings:write.
+
+  [Documentation](https://www.sanctionskit.com/docs/screenings)
+}

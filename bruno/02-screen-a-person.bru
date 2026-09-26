@@ -1,0 +1,70 @@
+meta {
+  name: 02 Screen a person
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/screenings
+  body: json
+  auth: inherit
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+  Idempotency-Key: {{screeningKey}}
+}
+
+body:json {
+  {
+    "subject": {
+      "name": "Alex Morgan",
+      "entityType": "person",
+      "birthDate": "1984"
+    },
+    "package": "sandbox@1",
+    "retention": "standard"
+  }
+}
+
+script:pre-request {
+  let key = bru.getEnvVar("screeningKey");
+  if (!key) {
+    key = bru.interpolate("{{$randomUUID}}");
+    bru.setEnvVar("screeningKey", key);
+  }
+  if (!/^[\w:.-]{8,128}$/.test(key)) {
+    throw new Error("Set screeningKey to an 8-128 character operation key.");
+  }
+  req.setHeader("Idempotency-Key", key);
+}
+
+tests {
+  test("HTTP 201", function () {
+    expect(res.getStatus()).to.equal(201);
+  });
+  if (res.getStatus() === 201) {
+    const body = res.getBody();
+    const result = body.data;
+    test("Synthetic screening result", function () {
+      expect(result.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+      expect(result.environment).to.equal("sandbox");
+      expect(result.matches).to.be.an("array");
+      expect(result.coverage).to.be.an("array").that.is.not.empty;
+      expect(result.versions.package).to.equal("sandbox@1");
+      expect(result.status).to.equal("potential_match");
+      expect(result.matches).to.not.be.empty;
+    });
+    if (result && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(result.id) && result.environment === "sandbox" &&
+        result.status === "potential_match" && Array.isArray(result.matches) && result.matches.length > 0) {
+      bru.setEnvVar("resultId", result.id);
+    }
+  }
+}
+
+docs {
+  Alex Morgan is an invented sandbox person. Expect potential_match and inspect the returned evidence. A successful response saves resultId for the next two requests. Scope: screenings:write.
+
+  [Documentation](https://www.sanctionskit.com/docs/screenings)
+}

@@ -1,0 +1,46 @@
+meta {
+  name: 09 Read a batch result
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/results/{{batchResultId}}
+  body: none
+  auth: inherit
+}
+
+headers {
+  Accept: application/json
+}
+
+script:pre-request {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bru.getEnvVar("batchResultId") || "")) {
+    throw new Error("Run the creation request first, or set a valid batchResultId.");
+  }
+}
+
+tests {
+  test("HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  if (res.getStatus() === 200) {
+    const body = res.getBody();
+    const result = body.data;
+    test("Synthetic screening result", function () {
+      expect(result.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+      expect(result.environment).to.equal("sandbox");
+      expect(result.matches).to.be.an("array");
+      expect(result.coverage).to.be.an("array").that.is.not.empty;
+      expect(result.versions.package).to.equal("sandbox@1");
+      expect(["potential_match", "no_match"]).to.include(result.status);
+      expect(result.id).to.equal(bru.getEnvVar("batchResultId"));
+    });
+  }
+}
+
+docs {
+  Read a completed batch row. Read batch progress saves the first completed row’s screening_id as batchResultId. To inspect another row, set batchResultId to its screening_id. Scope: results:read.
+
+  [Documentation](https://www.sanctionskit.com/docs/batches)
+}

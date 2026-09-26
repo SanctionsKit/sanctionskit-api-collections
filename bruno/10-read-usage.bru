@@ -1,0 +1,36 @@
+meta {
+  name: 10 Read usage
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/usage
+  body: none
+  auth: inherit
+}
+
+headers {
+  Accept: application/json
+}
+
+tests {
+  test("HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  if (res.getStatus() === 200) {
+    const body = res.getBody();
+    test("Sandbox allowance", function () {
+      expect(body.data.environment).to.equal("sandbox");
+      expect(body.data.used).to.be.a("number").and.at.least(0);
+      expect(body.data.reserved).to.be.a("number").and.at.least(0);
+      expect(body.data.remaining).to.be.a("number").and.at.least(0);
+    });
+  }
+}
+
+docs {
+  Inspect used subjects, pending reservations and remaining sandbox allowance. Values depend on your workspace. Synthetic sandbox requests never consume paid production allowance. Scope: usage:read.
+
+  [Documentation](https://www.sanctionskit.com/docs/usage)
+}

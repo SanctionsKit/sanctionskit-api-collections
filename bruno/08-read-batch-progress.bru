@@ -1,0 +1,58 @@
+meta {
+  name: 08 Read batch progress
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/batches/{{batchId}}?limit=100&offset={{batchOffset}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  limit: 100
+  offset: {{batchOffset}}
+}
+
+headers {
+  Accept: application/json
+}
+
+script:pre-request {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bru.getEnvVar("batchId") || "")) {
+    throw new Error("Run the creation request first, or set a valid batchId.");
+  }
+  const offset = String(bru.getEnvVar("batchOffset"));
+  if (!/^(0|[1-9]\d*)$/.test(offset) || Number(offset) > 10000) {
+    throw new Error("Set batchOffset to an integer from 0 to 10000.");
+  }
+}
+
+tests {
+  test("HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  if (res.getStatus() === 200) {
+    const body = res.getBody();
+    test("Batch progress and row page", function () {
+      expect(body.data.id).to.equal(bru.getEnvVar("batchId"));
+      expect(body.data.environment).to.equal("sandbox");
+      expect(["importing", "pending", "processing", "completed", "cancelled", "failed"]).to.include(body.data.status);
+      expect(body.data.rows).to.be.an("array");
+      expect(body.data.nextOffset === null || Number.isInteger(body.data.nextOffset)).to.equal(true);
+    });
+
+    if (body.data && body.data.id === bru.getEnvVar("batchId") &&
+        body.data.environment === "sandbox" && Array.isArray(body.data.rows)) {
+      const row = body.data.rows.find((row) => row.status === "completed" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(row.screening_id));
+      if (row) bru.setEnvVar("batchResultId", row.screening_id);
+    }
+  }
+}
+
+docs {
+  Run Submit a batch first. Send again after about five seconds while status is pending, importing or processing. Stop at completed, failed or cancelled and inspect every row. completed can include failed rows. After processing stops, set batchOffset to nextOffset until null. The first completed row.screening_id is saved as batchResultId for Read a batch result. To download its evidence, copy that ID into resultId. Scope: results:read.
+
+  [Documentation](https://www.sanctionskit.com/docs/batches)
+}

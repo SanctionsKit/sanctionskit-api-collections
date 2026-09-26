@@ -1,0 +1,43 @@
+meta {
+  name: 04 Download evidence
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/results/{{resultId}}/evidence
+  body: none
+  auth: inherit
+}
+
+headers {
+  Accept: application/json
+}
+
+script:pre-request {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bru.getEnvVar("resultId") || "")) {
+    throw new Error("Run the creation request first, or set a valid resultId.");
+  }
+}
+
+tests {
+  test("HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  if (res.getStatus() === 200) {
+    const body = res.getBody();
+    test("Retained evidence document", function () {
+      expect(body.format).to.equal("sanctionskit-evidence@1");
+      expect(body.result.id).to.equal(bru.getEnvVar("resultId"));
+      expect(body.result.environment).to.equal("sandbox");
+      expect(body.retention).to.equal("standard");
+      expect(body.retainedInputs).to.equal(true);
+    });
+  }
+}
+
+docs {
+  Read retained evidence for resultId. This response is a document with format and result at the top level; it has no data wrapper. Scope: results:read.
+
+  [Documentation](https://www.sanctionskit.com/docs/evidence)
+}

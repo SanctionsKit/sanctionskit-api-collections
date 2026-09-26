@@ -1,0 +1,93 @@
+meta {
+  name: 07 Submit a batch
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/batches
+  body: json
+  auth: inherit
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+  Idempotency-Key: {{batchKey}}
+}
+
+body:json {
+  {
+    "name": "Synthetic onboarding sample",
+    "subjects": [
+      {
+        "subject": {
+          "name": "Alex Morgan",
+          "entityType": "person",
+          "birthDate": "1984"
+        },
+        "package": "sandbox@1",
+        "retention": "standard"
+      },
+      {
+        "subject": {
+          "name": "Juniper Example Cooperative",
+          "entityType": "organization"
+        },
+        "package": "sandbox@1",
+        "retention": "standard"
+      },
+      {
+        "subject": {
+          "name": "Example Horizon",
+          "entityType": "vessel",
+          "identifiers": [
+            {
+              "type": "imo",
+              "value": "0000001"
+            }
+          ]
+        },
+        "package": "sandbox@1",
+        "retention": "standard"
+      }
+    ]
+  }
+}
+
+script:pre-request {
+  let key = bru.getEnvVar("batchKey");
+  if (!key) {
+    key = bru.interpolate("{{$randomUUID}}");
+    bru.setEnvVar("batchKey", key);
+  }
+  if (!/^[\w:.-]{8,128}$/.test(key)) {
+    throw new Error("Set batchKey to an 8-128 character operation key.");
+  }
+  req.setHeader("Idempotency-Key", key);
+}
+
+tests {
+  test("HTTP 202", function () {
+    expect(res.getStatus()).to.equal(202);
+  });
+  if (res.getStatus() === 202) {
+    const body = res.getBody();
+    test("Batch accepted", function () {
+      expect(body.data.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+      expect(body.data.status).to.equal("pending");
+      expect(body.data.total).to.equal(3);
+    });
+    if (body.data && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.data.id) && body.data.status === "pending" && body.data.total === 3) {
+      bru.setEnvVar("batchId", body.data.id);
+      bru.setEnvVar("batchResultId", "");
+      bru.setEnvVar("batchOffset", "0");
+    }
+  }
+}
+
+docs {
+  Submit three complete synthetic screening requests. HTTP 202 confirms acceptance, not completed screening. A successful response saves batchId. Each row uses standard retention. Scope: batches:write.
+
+  [Documentation](https://www.sanctionskit.com/docs/batches)
+}
