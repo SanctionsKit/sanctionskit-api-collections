@@ -1,6 +1,6 @@
 {
   "info": {
-    "name": "SanctionsKit API — sanctions screening examples",
+    "name": "SanctionsKit Sanctions Screening API",
     "description": "Try sanctions screening, retained evidence, source discovery and batch processing with the SanctionsKit API. All screening requests use invented sandbox fixtures and are never billed.\n\n[Create a workspace](https://www.sanctionskit.com/signup) · [Create a sandbox API key](https://www.sanctionskit.com/dashboard/keys?environment=sandbox) · [Quickstart](https://www.sanctionskit.com/docs/quickstart) · [API reference](https://www.sanctionskit.com/docs/api-reference)\n\nImport and select the companion sandbox environment. Set apiKey to a local sk_test_ value with sources:read, screenings:write, results:read, batches:write and usage:read. Run the requests in order. Batch progress is a single read; repeat it manually until processing stops.\n\nEach POST creates an operation key only when its environment variable is empty. Keep the same key and body when retrying. Clear the corresponding key only for a new operation. Saved IDs remain in your local environment. Clear secrets and IDs before exporting or sharing.\n\nPotential matches require review. A no-match result applies only to the requested coverage; it is not legal clearance. [Errors](https://www.sanctionskit.com/docs/errors) · [Idempotency](https://www.sanctionskit.com/docs/idempotency)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },

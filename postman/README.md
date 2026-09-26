@@ -7,7 +7,7 @@ Runnable sanctions screening API examples for people, organizations and vessels,
 1. [Create a SanctionsKit workspace](https://www.sanctionskit.com/signup), then [create a sandbox API key](https://www.sanctionskit.com/dashboard/keys?environment=sandbox).
 2. Give the key these scopes: `sources:read`, `screenings:write`, `results:read`, `batches:write`, `usage:read`.
 3. Import `sanctionskit.postman_collection.json` and `sanctionskit.sandbox.postman_environment.json` into Postman.
-4. Select **SanctionsKit — sandbox**. Set `apiKey` to your `sk_test_` key as a local environment value. Keep its shared value empty.
+4. Select **SanctionsKit sandbox**. Set `apiKey` to your `sk_test_` key as a local environment value. Keep its shared value empty.
 5. Run **02 Screen a person**, then **03 Retrieve a result** and **04 Download evidence**. The screening request saves `resultId` after a successful response.
 
 The collection accepts sandbox keys and sends requests only to `https://www.sanctionskit.com/api/v1`. Redirects are disabled. Use the current Postman app with scripts enabled. If a request is skipped, check the Postman Console for setup instructions.
