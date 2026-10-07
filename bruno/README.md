@@ -2,6 +2,10 @@
 
 Plain-text `.bru` examples for the SanctionsKit sanctions screening API. Try synthetic person, organization and vessel screening, inspect retained evidence, and submit a small batch.
 
+[Fetch this collection in Bruno](https://fetch.usebruno.com/?url=https%3A%2F%2Fgithub.com%2FSanctionsKit%2Fsanctionskit-api-collections.git), choose a local folder, then select the **SanctionsKit Sanctions Screening API** collection. Bruno must be installed. You can also clone or download this repository and open its `bruno` folder.
+
+These examples accept sandbox keys only and use invented data. Start with the [SanctionsKit API quickstart](https://www.sanctionskit.com/docs/quickstart). For live screening in your application, review [production coverage](https://www.sanctionskit.com/coverage) and [paid production plans](https://www.sanctionskit.com/pricing); keep the synthetic collection separate.
+
 ## Get started
 
 1. [Create a SanctionsKit workspace](https://www.sanctionskit.com/signup), then [create a sandbox API key](https://www.sanctionskit.com/dashboard/keys?environment=sandbox).
